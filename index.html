@@ -13,6 +13,21 @@
         #rewardContainer { margin: 20px auto; width: 200px; }
         #rewardDisplay { max-width: 100%; display: none; }
         input, button { font-size: 1.2em; }
+        /* Estilos para la barra de progreso */
+        #progressBarContainer {
+            width: 80%;
+            background-color: #e0e0e0;
+            border-radius: 25px;
+            margin: 20px auto;
+            height: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        #progressBar {
+            height: 100%;
+            border-radius: 25px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
     </style>
 </head>
 <body>
@@ -20,6 +35,7 @@
     <div id="rewardContainer">
         <label for="rewardLink">🎁 Link de la imagen de la recompensa: </label>
         <input type="text" id="rewardLink" placeholder="Pega aquí el enlace" oninput="loadRewardImage()">
+        <button onclick="saveRewardLink()">💾 Guardar enlace</button>
         <br><br>
         <img id="rewardDisplay" src="">
     </div>
@@ -27,15 +43,22 @@
     <input type="date" id="date" onchange="loadTasks()">
     <br><br>
     <label for="goal">🏆 Puntos para premio final: </label>
-    <input type="number" id="goal" value="100">
+    <input type="number" id="goal" value="100" onchange="updateProgressBar()">
     <p>⭐ Puntos actuales: <span id="totalPoints">0</span></p>
     <p>🌟 Total acumulado: <span id="totalAccumulated">0</span></p>
+
+    <!-- Barra de progreso -->
+    <div id="progressBarContainer">
+        <div id="progressBar"></div>
+    </div>
+
     <table>
         <thead>
             <tr>
                 <th>📌 Tarea</th>
                 <th>✨ Puntos</th>
                 <th>✅ Completado</th>
+                <th>🛠️ Acciones</th>
             </tr>
         </thead>
         <tbody id="taskTable">
@@ -94,11 +117,12 @@
                 }
             }
 
-            tasks.forEach(task => {
+            tasks.forEach((task, index) => {
                 let row = table.insertRow();
                 let cell1 = row.insertCell(0);
                 let cell2 = row.insertCell(1);
                 let cell3 = row.insertCell(2);
+                let cell4 = row.insertCell(3);
                 
                 cell1.textContent = "🎯 " + task.name;
                 cell2.textContent = "💰 " + task.points;
@@ -113,9 +137,19 @@
                 }
                 
                 cell3.appendChild(checkbox);
+                let editButton = document.createElement("button");
+                editButton.textContent = "✏️ Editar";
+                editButton.onclick = function() { editTask(index); };
+                let deleteButton = document.createElement("button");
+                deleteButton.textContent = "🗑️ Eliminar";
+                deleteButton.onclick = function() { deleteTask(index); };
+                cell4.appendChild(editButton);
+                cell4.appendChild(deleteButton);
             });
             document.getElementById("totalPoints").textContent = totalPoints;
             document.getElementById("totalAccumulated").textContent = totalAccumulated;
+
+            updateProgressBar();  // Actualiza la barra cada vez que se cargan las tareas
         }
 
         function updatePoints(checkbox, points, row, date, taskName) {
@@ -135,6 +169,27 @@
             localStorage.setItem("taskHistory", JSON.stringify(taskHistory));
             checkReward();
             document.getElementById("totalPoints").textContent = totalPoints;
+            updateProgressBar();
+        }
+
+        function editTask(index) {
+            let taskName = prompt("Editar nombre de tarea:", tasks[index].name);
+            let points = prompt("Editar puntos:", tasks[index].points);
+            if (taskName && !isNaN(points) && points > 0) {
+                tasks[index].name = taskName;
+                tasks[index].points = parseInt(points);
+                saveTasks();
+                loadTasks();
+            }
+        }
+
+        function deleteTask(index) {
+            if (confirm("¿Estás seguro de que deseas eliminar esta tarea?")) {
+                totalPoints -= tasks[index].points;  // Resta los puntos al eliminar
+                tasks.splice(index, 1);
+                saveTasks();
+                loadTasks();
+            }
         }
 
         function checkReward() {
@@ -158,7 +213,39 @@
             }
         }
 
+        function saveRewardLink() {
+            let link = document.getElementById("rewardLink").value;
+            if (link) {
+                localStorage.setItem("rewardLink", link);
+                loadRewardImage(); // Previsualiza la imagen tras guardar
+            }
+        }
+
+        function updateProgressBar() {
+            let goal = parseInt(document.getElementById("goal").value);
+            let progress = (totalPoints + totalAccumulated) / goal * 100;
+            let progressBar = document.getElementById("progressBar");
+
+            if (progress > 100) progress = 100;  // Asegura que no se pase del 100%
+
+            progressBar.style.width = progress + "%";
+
+            // Cambia el color de la barra según el progreso
+            if (progress < 50) {
+                progressBar.style.backgroundColor = "#ff4500";  // Naranja si menos del 50%
+            } else if (progress < 80) {
+                progressBar.style.backgroundColor = "#ffdf00";  // Amarillo si menos del 80%
+            } else {
+                progressBar.style.backgroundColor = "#32cd32";  // Verde si más del 80%
+            }
+        }
+
         window.onload = function() {
+            let savedLink = localStorage.getItem("rewardLink");
+            if (savedLink) {
+                document.getElementById("rewardLink").value = savedLink;
+                loadRewardImage();
+            }
             loadTasks();
         };
     </script>
