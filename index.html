@@ -2,252 +2,122 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌟 Tabla de Recompensas 🌟</title>
+    <title>Planificador de Ataques</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #ffebcd; }
-        h1 { color: #ff4500; font-size: 2em; }
-        table { width: 60%; margin: auto; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
-        th, td { border: 2px solid black; padding: 15px; font-size: 1.2em; }
-        .completed { background-color: lightgreen; }
-        #rewardContainer { margin: 20px auto; width: 200px; }
-        #rewardDisplay { max-width: 100%; display: none; }
-        input, button { font-size: 1.2em; }
-        /* Estilos para la barra de progreso */
-        #progressBarContainer {
-            width: 80%;
-            background-color: #e0e0e0;
-            border-radius: 25px;
-            margin: 20px auto;
-            height: 30px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        #progressBar {
-            height: 100%;
-            border-radius: 25px;
-            width: 0%;
-            transition: width 0.5s ease;
-        }
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; }
+        .entry { margin: 10px 0; }
+        .entry input { padding: 5px; width: 150px; }
+        #attackList { margin-top: 20px; }
+        .attack-item { padding: 8px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; }
+        .knight-list { border: 1px solid #ddd; max-height: 300px; overflow-y: auto; padding: 10px; margin-top: 20px; }
+        .knight-item { cursor: pointer; padding: 5px; }
+        .knight-item:hover { background-color: #f0f0f0; }
+        .selected { background-color: #d1e7dd; }
+        .manual-mode { margin-top: 20px; padding: 10px; border-top: 1px solid #ddd; }
+        #autoButton { background-color: #dc3545; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+        #autoButton.active { background-color: #28a745; }
     </style>
 </head>
 <body>
-    <h1>🌈 Tabla de Recompensas 🎉</h1>
-    <div id="rewardContainer">
-        <label for="rewardLink">🎁 Link de la imagen de la recompensa: </label>
-        <input type="text" id="rewardLink" placeholder="Pega aquí el enlace" oninput="loadRewardImage()">
-        <button onclick="saveRewardLink()">💾 Guardar enlace</button>
-        <br><br>
-        <img id="rewardDisplay" src="">
-    </div>
-    <label for="date">📅 Selecciona un día: </label>
-    <input type="date" id="date" onchange="loadTasks()">
-    <br><br>
-    <label for="goal">🏆 Puntos para premio final: </label>
-    <input type="number" id="goal" value="100" onchange="updateProgressBar()">
-    <p>⭐ Puntos actuales: <span id="totalPoints">0</span></p>
-    <p>🌟 Total acumulado: <span id="totalAccumulated">0</span></p>
-
-    <!-- Barra de progreso -->
-    <div id="progressBarContainer">
-        <div id="progressBar"></div>
+    <h1>Planificador de Ataques</h1>
+    
+    <!-- Modo automático -->
+    <div class="entry">
+        <input type="text" id="name" placeholder="Nombre" readonly>
+        <input type="text" id="timeAuto" placeholder="hh.mm.ss">
+        <button onclick="addAttack('auto')">Atacar</button>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>📌 Tarea</th>
-                <th>✨ Puntos</th>
-                <th>✅ Completado</th>
-                <th>🛠️ Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="taskTable">
-        </tbody>
-    </table>
-    <br>
-    <label for="task">✍️ Nueva tarea: </label>
-    <input type="text" id="task">
-    <label for="points">🔢 Puntos: </label>
-    <input type="number" id="points">
-    <button onclick="addTask()">➕ Añadir</button>
-    <p id="rewardMessage"></p>
+    <h2>Lista de Caballeros</h2>
+    <div class="knight-list" id="knightList"></div>
+
+    <!-- Modo manual -->
+    <div class="manual-mode">
+        <h3>Modo Manual</h3>
+        <input type="text" id="urlManual" placeholder="URL completa">
+        <input type="text" id="timeManual" placeholder="hh.mm.ss">
+        <button onclick="addAttack('manual')">Atacar Manual</button>
+    </div>
+
+    <!-- Botón AUTO -->
+    <div class="manual-mode">
+        <button id="autoButton" onclick="toggleAuto()">AUTO</button>
+    </div>
+
+    <h2>Cola de Ataques</h2>
+    <div id="attackList"></div>
 
     <script>
-        let totalPoints = 0;
-        let totalAccumulated = 0;
-        let tasks = [];
-        let taskHistory = {};
-
-        document.getElementById("date").valueAsDate = new Date();
-
-        function addTask() {
-            let taskName = document.getElementById("task").value;
-            let points = parseInt(document.getElementById("points").value);
-            if (!taskName || isNaN(points) || points <= 0) return;
-            tasks.push({ name: taskName, points: points });
-            saveTasks();
-            loadTasks();
-        }
-
-        function saveTasks() {
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-        }
-
-        function loadTasks() {
-            let date = document.getElementById("date").value;
-            totalPoints = 0;
-            totalAccumulated = 0;
-            
-            let savedTasks = localStorage.getItem("tasks");
-            if (savedTasks) {
-                tasks = JSON.parse(savedTasks);
-            }
-
-            let savedHistory = localStorage.getItem("taskHistory");
-            if (savedHistory) {
-                taskHistory = JSON.parse(savedHistory);
-            }
-
-            let table = document.getElementById("taskTable");
-            table.innerHTML = "";
-            
-            for (let dateKey in taskHistory) {
-                for (let task in taskHistory[dateKey]) {
-                    totalAccumulated += tasks.find(t => t.name === task)?.points || 0;
-                }
-            }
-
-            tasks.forEach((task, index) => {
-                let row = table.insertRow();
-                let cell1 = row.insertCell(0);
-                let cell2 = row.insertCell(1);
-                let cell3 = row.insertCell(2);
-                let cell4 = row.insertCell(3);
-                
-                cell1.textContent = "🎯 " + task.name;
-                cell2.textContent = "💰 " + task.points;
-                let checkbox = document.createElement("input");
-                checkbox.type = "checkbox";
-                checkbox.onchange = function () { updatePoints(this, task.points, row, date, task.name); };
-                
-                if (taskHistory[date] && taskHistory[date][task.name]) {
-                    checkbox.checked = true;
-                    row.classList.add("completed");
-                    totalPoints += task.points;
-                }
-                
-                cell3.appendChild(checkbox);
-                let editButton = document.createElement("button");
-                editButton.textContent = "✏️ Editar";
-                editButton.onclick = function() { editTask(index); };
-                let deleteButton = document.createElement("button");
-                deleteButton.textContent = "🗑️ Eliminar";
-                deleteButton.onclick = function() { deleteTask(index); };
-                cell4.appendChild(editButton);
-                cell4.appendChild(deleteButton);
-            });
-            document.getElementById("totalPoints").textContent = totalPoints;
-            document.getElementById("totalAccumulated").textContent = totalAccumulated;
-
-            updateProgressBar();  // Actualiza la barra cada vez que se cargan las tareas
-        }
-
-        function updatePoints(checkbox, points, row, date, taskName) {
-            if (!taskHistory[date]) {
-                taskHistory[date] = {};
-            }
-
-            if (checkbox.checked) {
-                totalPoints += points;
-                row.classList.add("completed");
-                taskHistory[date][taskName] = true;
-            } else {
-                totalPoints -= points;
-                row.classList.remove("completed");
-                delete taskHistory[date][taskName];
-            }
-            localStorage.setItem("taskHistory", JSON.stringify(taskHistory));
-            checkReward();
-            document.getElementById("totalPoints").textContent = totalPoints;
-            updateProgressBar();
-        }
-
-        function editTask(index) {
-            let taskName = prompt("Editar nombre de tarea:", tasks[index].name);
-            let points = prompt("Editar puntos:", tasks[index].points);
-            if (taskName && !isNaN(points) && points > 0) {
-                tasks[index].name = taskName;
-                tasks[index].points = parseInt(points);
-                saveTasks();
-                loadTasks();
-            }
-        }
-
-        function deleteTask(index) {
-            if (confirm("¿Estás seguro de que deseas eliminar esta tarea?")) {
-                totalPoints -= tasks[index].points;  // Resta los puntos al eliminar
-                tasks.splice(index, 1);
-                saveTasks();
-                loadTasks();
-            }
-        }
-
-        function checkReward() {
-            let goal = parseInt(document.getElementById("goal").value);
-            let rewardMessage = document.getElementById("rewardMessage");
-            if (totalAccumulated + totalPoints >= goal) {
-                rewardMessage.textContent = "🎉 ¡Has alcanzado el premio final! 🏆";
-            } else {
-                rewardMessage.textContent = "";
-            }
-        }
-
-        function loadRewardImage() {
-            let link = document.getElementById("rewardLink").value;
-            let img = document.getElementById("rewardDisplay");
-            if (link) {
-                img.src = link;
-                img.style.display = "block";
-            } else {
-                img.style.display = "none";
-            }
-        }
-
-        function saveRewardLink() {
-            let link = document.getElementById("rewardLink").value;
-            if (link) {
-                localStorage.setItem("rewardLink", link);
-                loadRewardImage(); // Previsualiza la imagen tras guardar
-            }
-        }
-
-        function updateProgressBar() {
-            let goal = parseInt(document.getElementById("goal").value);
-            let progress = (totalPoints + totalAccumulated) / goal * 100;
-            let progressBar = document.getElementById("progressBar");
-
-            if (progress > 100) progress = 100;  // Asegura que no se pase del 100%
-
-            progressBar.style.width = progress + "%";
-
-            // Cambia el color de la barra según el progreso
-            if (progress < 50) {
-                progressBar.style.backgroundColor = "#ff4500";  // Naranja si menos del 50%
-            } else if (progress < 80) {
-                progressBar.style.backgroundColor = "#ffdf00";  // Amarillo si menos del 80%
-            } else {
-                progressBar.style.backgroundColor = "#32cd32";  // Verde si más del 80%
-            }
-        }
-
-        window.onload = function() {
-            let savedLink = localStorage.getItem("rewardLink");
-            if (savedLink) {
-                document.getElementById("rewardLink").value = savedLink;
-                loadRewardImage();
-            }
-            loadTasks();
+        const urlMappings = {
+            // ... (todos los caballeros aquí, como en versiones anteriores)
         };
+
+        let attacks = [];
+        let autoInterval = null;
+        let isAutoActive = false;
+
+        // Función para obtener URLs aleatorias
+        function getRandomUrls(count) {
+            const urls = Object.entries(urlMappings);
+            const selected = [];
+            while (selected.length < count && selected.length < urls.length) {
+                const randomIndex = Math.floor(Math.random() * urls.length);
+                const [name, url] = urls[randomIndex];
+                if (!selected.some(s => s.url === url)) {
+                    selected.push({ name, url });
+                }
+            }
+            return selected;
+        }
+
+        // Función principal del modo AUTO
+        function runAuto() {
+            // Ataques inmediatos
+            const immediateAttacks = getRandomUrls(3);
+            immediateAttacks.forEach(attack => {
+                window.open(attack.url, '_blank');
+            });
+
+            // Programar próximos ataques
+            const nextAttacks = getRandomUrls(3);
+            nextAttacks.forEach(attack => {
+                const randomDelay = 5 * 60 * 1000 + Math.random() * 60 * 1000; // 5-6 minutos
+                const attackTime = new Date(new Date().getTime() + randomDelay);
+                
+                attacks.push({
+                    name: `AUTO: ${attack.name}`,
+                    time: attackTime,
+                    url: attack.url
+                });
+            });
+
+            attacks.sort((a, b) => a.time - b.time);
+            updateAttackList();
+        }
+
+        // Control del botón AUTO
+        function toggleAuto() {
+            const button = document.getElementById('autoButton');
+            if (isAutoActive) {
+                clearInterval(autoInterval);
+                autoInterval = null;
+                isAutoActive = false;
+                button.textContent = 'AUTO';
+                button.classList.remove('active');
+            } else {
+                autoInterval = setInterval(runAuto, 6 * 60 * 1000); // Cada 6 minutos
+                runAuto(); // Ejecución inicial
+                isAutoActive = true;
+                button.textContent = 'DETENER';
+                button.classList.add('active');
+            }
+        }
+
+        // Resto del código existente (loadKnightList, addAttack, updateAttackList, etc.)
+        // ... 
+
+        // Inicializar
+        loadKnightList();
     </script>
 </body>
 </html>
